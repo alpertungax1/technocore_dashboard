@@ -1,0 +1,9 @@
+.env
+.env.*
+*.key
+*.pem
+*.secret
+*vault*
+*seed*
+node_modules/
+.vercel
