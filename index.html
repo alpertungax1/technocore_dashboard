@@ -184,7 +184,74 @@
       </div>
     </div>
 
-    <!-- Search & Filter Bar -->
+    <!-- Interactive PnL & Top 25 Calculator -->
+    <div class="glow-card rounded-2xl p-5 border border-cardBorder space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cardBorder/60 pb-3">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wider font-mono text-white flex items-center gap-2">
+            <span>🎯</span>
+            <span>PnL &amp; Top 25 Distance Calculator</span>
+          </h2>
+          <p class="text-xs text-slate-400 font-mono mt-0.5">
+            Test any trade position against live referee mark to see exact score &amp; target price to enter Top 25.
+          </p>
+        </div>
+        <div class="flex items-center gap-1.5 font-mono text-xs">
+          <button onclick="fillPreset('short')" class="bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-500/30 px-2.5 py-1 rounded-lg transition text-[11px]">
+            ⚡ Fill Short ($225.03)
+          </button>
+          <button onclick="fillPreset('long')" class="bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-lg transition text-[11px]">
+            ⚡ Fill Long ($225.03)
+          </button>
+        </div>
+      </div>
+
+      <!-- Inputs & Live Outputs -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+        <!-- Input fields -->
+        <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Side -->
+          <div>
+            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Position Side</label>
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-900/90 rounded-xl border border-slate-700/80">
+              <button type="button" id="sideLongBtn" onclick="setCalcSide('LONG')" class="py-1 text-xs font-mono font-bold rounded-lg transition text-slate-400 hover:text-white">LONG</button>
+              <button type="button" id="sideShortBtn" onclick="setCalcSide('SHORT')" class="py-1 text-xs font-mono font-bold rounded-lg transition bg-rose-500/20 text-rose-400 border border-rose-500/40">SHORT</button>
+            </div>
+          </div>
+
+          <!-- Entry Price -->
+          <div>
+            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Entry Price ($)</label>
+            <input type="number" id="calcEntryPx" step="0.01" value="225.03" oninput="calculateUserPosition()" class="w-full bg-slate-900/90 text-white text-xs font-mono px-3 py-2 rounded-xl border border-slate-700/80 focus:outline-none focus:border-amber-400 transition">
+          </div>
+
+          <!-- Quantity -->
+          <div>
+            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Contracts Qty</label>
+            <input type="number" id="calcQty" step="0.01" value="43.97" oninput="calculateUserPosition()" class="w-full bg-slate-900/90 text-white text-xs font-mono px-3 py-2 rounded-xl border border-slate-700/80 focus:outline-none focus:border-amber-400 transition">
+          </div>
+        </div>
+
+        <!-- Result Card -->
+        <div class="lg:col-span-5 bg-slate-950/80 rounded-xl p-3.5 border border-slate-800 flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">ESTIMATED SCORE</span>
+            <span id="calcScoreBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">--</span>
+          </div>
+
+          <div class="mt-2 flex items-baseline justify-between">
+            <div class="text-xl md:text-2xl font-extrabold font-mono" id="calcScoreDisplay">-- POLF</div>
+            <div class="text-xs font-mono text-slate-400" id="calcFeeDisplay">Fee: -$98.94</div>
+          </div>
+
+          <div class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono" id="calcStatusRow">
+            <span class="text-slate-400" id="calcStatusText">Loading cutoff...</span>
+            <span class="text-amber-400 font-bold" id="calcTargetPx">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="glow-card rounded-2xl p-3 flex flex-col sm:flex-row items-center gap-3">
       <div class="relative w-full">
         <svg class="w-4 h-4 absolute left-3.5 top-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -336,7 +403,8 @@
           document.getElementById('lastSweepUpdated').innerText = `Sweep #${currentSweepNumber} Settled`;
           
           if (pnlObj.mark) {
-            document.getElementById('markPrice').innerText = `Mark: $${parseFloat(pnlObj.mark).toFixed(2)}`;
+            currentMarkPrice = parseFloat(pnlObj.mark);
+            document.getElementById('markPrice').innerText = `Mark: $${currentMarkPrice.toFixed(2)}`;
           }
 
           // Progress bar (out of 2556)
@@ -350,6 +418,7 @@
 
             // Cutoff (25th score)
             const cutoff = rawLeaderboard.length >= 25 ? rawLeaderboard[24][1] : rawLeaderboard[rawLeaderboard.length - 1][1];
+            currentCutoffScore = parseFloat(cutoff);
             document.getElementById('cutoffScore').innerText = `${parseFloat(cutoff) >= 0 ? '+' : ''}${parseFloat(cutoff).toFixed(2)} POLF`;
 
             // Podiums
@@ -370,11 +439,89 @@
             }
 
             renderTable(rawLeaderboard);
+            calculateUserPosition();
           }
         }
         countdownSec = 10;
       } catch (err) {
         console.error('Fetch error:', err);
+      }
+    }
+
+    let currentMarkPrice = 225.03;
+    let currentCutoffScore = 70.0;
+    let calcSide = 'SHORT';
+
+    function setCalcSide(side) {
+      calcSide = side;
+      const longBtn = document.getElementById('sideLongBtn');
+      const shortBtn = document.getElementById('sideShortBtn');
+      if (side === 'LONG') {
+        longBtn.className = 'py-1 text-xs font-mono font-bold rounded-lg transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        shortBtn.className = 'py-1 text-xs font-mono font-bold rounded-lg transition text-slate-400 hover:text-white';
+      } else {
+        shortBtn.className = 'py-1 text-xs font-mono font-bold rounded-lg transition bg-rose-500/20 text-rose-400 border border-rose-500/40';
+        longBtn.className = 'py-1 text-xs font-mono font-bold rounded-lg transition text-slate-400 hover:text-white';
+      }
+      calculateUserPosition();
+    }
+
+    function fillPreset(type) {
+      if (type === 'short') {
+        setCalcSide('SHORT');
+        document.getElementById('calcEntryPx').value = '225.03';
+        document.getElementById('calcQty').value = '43.97';
+      } else {
+        setCalcSide('LONG');
+        document.getElementById('calcEntryPx').value = '225.03';
+        document.getElementById('calcQty').value = '43.97';
+      }
+      calculateUserPosition();
+    }
+
+    function calculateUserPosition() {
+      const entryPx = parseFloat(document.getElementById('calcEntryPx').value) || 225.03;
+      const qty = parseFloat(document.getElementById('calcQty').value) || 43.97;
+      const fee = qty * entryPx * 0.01;
+      
+      let score = 0;
+      if (calcSide === 'LONG') {
+        score = qty * (currentMarkPrice - entryPx) - fee;
+      } else {
+        score = qty * (entryPx - currentMarkPrice) - fee;
+      }
+
+      const scoreDisplay = document.getElementById('calcScoreDisplay');
+      scoreDisplay.innerText = `${score >= 0 ? '+' : ''}${score.toFixed(2)} POLF`;
+      scoreDisplay.className = `text-xl md:text-2xl font-extrabold font-mono ${score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      document.getElementById('calcFeeDisplay').innerText = `Fee: -$${fee.toFixed(2)}`;
+
+      const badge = document.getElementById('calcScoreBadge');
+      const statusText = document.getElementById('calcStatusText');
+      const targetPxElem = document.getElementById('calcTargetPx');
+
+      if (score >= currentCutoffScore) {
+        badge.innerText = "QUALIFIED FOR TOP 25";
+        badge.className = "text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/40";
+        statusText.innerText = `Exceeds cutoff by +${(score - currentCutoffScore).toFixed(2)} POLF`;
+        targetPxElem.innerText = `Qualified!`;
+        targetPxElem.className = "text-emerald-400 font-bold";
+      } else {
+        const gap = currentCutoffScore - score;
+        badge.innerText = `GAP: -${gap.toFixed(2)} POLF`;
+        badge.className = "text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-500/40";
+        
+        let targetPx = 0;
+        if (calcSide === 'LONG') {
+          targetPx = entryPx + (currentCutoffScore + fee) / qty;
+        } else {
+          targetPx = entryPx - (currentCutoffScore + fee) / qty;
+        }
+        
+        statusText.innerText = `Needs +${gap.toFixed(2)} POLF for Top 25`;
+        targetPxElem.innerText = `Target NVDA: $${targetPx.toFixed(2)}`;
+        targetPxElem.className = "text-amber-400 font-bold";
       }
     }
 
